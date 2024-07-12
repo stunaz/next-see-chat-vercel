@@ -1,34 +1,15 @@
 "use client";
 
 import { PaperAirplaneIcon } from "@heroicons/react/24/outline";
-import { Avatar } from "~/components/avatar";
 import { Button } from "~/components/button";
-import { cx } from "class-variance-authority";
 import { Textarea } from "~/components/input";
 import { trpc } from "~/lib/trpc";
 import { format, formatDistanceToNow, isToday } from "date-fns";
 import * as React from "react";
 import { useLivePosts } from "./hooks";
 
-const pluralize = (count: number, singular: string, plural: string) =>
-  count === 1 ? singular : plural;
-
-const listWithAnd = (list: string[]) => {
-  if (list.length === 0) {
-    return "";
-  }
-  if (list.length === 1) {
-    return list[0];
-  }
-  if (list.length === 2) {
-    return `${list[0]} and ${list[1]}`;
-  }
-  return `${list.slice(0, -1).join(", ")}, and ${list.at(-1)}`;
-};
-
-export function Chat(props: Readonly<{ channelId: string }>) {
-  const { channelId } = props;
-  const livePosts = useLivePosts(channelId);
+export function Chat() {
+  const livePosts = useLivePosts();
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   return (
@@ -42,36 +23,16 @@ export function Chat(props: Readonly<{ channelId: string }>) {
           <div>
             <div className="grid gap-4">
               {livePosts.messages?.map((item) => {
-                const isMe = item.author === "stunaz";
-
                 return (
                   <div
                     key={item.id}
-                    className={cx(
-                      "flex items-start gap-3",
-                      isMe ? "justify-end" : "justify-start",
-                    )}
+                    className="flex items-start gap-3 justify-end"
                   >
-                    <Avatar
-                      alt="Avatar"
-                      className="size-8"
-                      initials={item.author?.substring(0, 2)}
-                      src={`https://github.com/${item.author}.png`}
-                    />
-
                     <div className="flex flex-col gap-1">
-                      <div
-                        className={cx(
-                          "rounded-lg bg-gray-100 p-3 text-sm ",
-                          isMe
-                            ? "bg-gray-300 dark:bg-gray-800"
-                            : "bg-gray-200 dark:bg-gray-700",
-                        )}
-                      >
+                      <div className="rounded-lg  p-3 text-sm bg-gray-300 dark:bg-gray-800">
                         <p>{item.text}</p>
                       </div>
                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                        {item.author} ·{" "}
                         {isToday(item.createdAt)
                           ? `${formatDistanceToNow(item.createdAt)} ago`
                           : format(item.createdAt, "MMM d, yyyy h:mm a")}
@@ -85,7 +46,6 @@ export function Chat(props: Readonly<{ channelId: string }>) {
         </div>
         <div className="border-t bg-white p-2 dark:border-gray-800 dark:bg-gray-900">
           <AddMessageForm
-            channelId={channelId}
             onMessagePost={() => {
               scrollRef.current?.scroll({
                 // `top: 0` is actually the bottom of the chat due to `flex-col-reverse`
@@ -100,27 +60,20 @@ export function Chat(props: Readonly<{ channelId: string }>) {
   );
 }
 
-function AddMessageForm(props: {
-  onMessagePost: () => void;
-  channelId: string;
-}) {
-  const { channelId } = props;
-  const addPost = trpc.post.add.useMutation();
-
-  const [message, setMessage] = React.useState("");
-  const [isFocused, setIsFocused] = React.useState(false);
-
-  async function postMessage() {
-    const input = {
-      author: "stunaz",
-      text: message,
-      channelId,
-    };
-    try {
-      await addPost.mutateAsync(input);
+function AddMessageForm(props: { onMessagePost: () => void }) {
+  const addPost = trpc.post.add.useMutation({
+    onSuccess: () => {
       setMessage("");
       props.onMessagePost();
-    } catch {}
+    },
+  });
+
+  const [message, setMessage] = React.useState("");
+
+  async function postMessage() {
+    addPost.mutate({
+      text: message,
+    });
   }
 
   return (
@@ -142,14 +95,6 @@ function AddMessageForm(props: {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           rows={message.split(/\r|\n/).length}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && e.metaKey) {
-              e.preventDefault();
-              void postMessage();
-            }
-          }}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
         />
         <Button
           className="absolute right-2 top-2"

@@ -4,7 +4,7 @@ import type { PostType } from "~/server/db/schema";
 import { z } from "zod";
 import { db } from "../db/client";
 import { publicProcedure, router } from "../trpc";
-import { ee } from "./channel";
+import { ee } from "../events";
 
 export const postRouter = router({
   list: publicProcedure.query(() => {
@@ -13,17 +13,13 @@ export const postRouter = router({
   add: publicProcedure
     .input(
       z.object({
-        channelId: z.string().uuid(),
-        author: z.string().trim().min(1),
         text: z.string().trim().min(1),
       }),
     )
     .mutation(async (opts) => {
-      const { channelId } = opts.input;
+      const post = db.insertPost(opts.input.text);
 
-      const post = db.insertPost(opts.input.author, channelId, opts.input.text);
-
-      ee.emit("add", channelId, post);
+      ee.emit("add", post);
 
       return post;
     }),
@@ -31,7 +27,6 @@ export const postRouter = router({
   onAdd: publicProcedure
     .input(
       z.object({
-        channelId: z.string().uuid(),
         // lastEventId is the last event id that the client has received
         // On the first call, it will be whatever was passed in the initial setup
         // If the client reconnects, it will be the last event id that the client received
@@ -54,10 +49,8 @@ export const postRouter = router({
       // We use a readable stream here to prevent the client from missing events
       const stream = new ReadableStream<PostType>({
         async start(controller) {
-          const onAdd = (channelId: string, data: PostType) => {
-            if (channelId === opts.input.channelId) {
-              controller.enqueue(data);
-            }
+          const onAdd = (data: PostType) => {
+            controller.enqueue(data);
           };
           ee.on("add", onAdd);
           unsubscribe = () => {
@@ -65,9 +58,7 @@ export const postRouter = router({
           };
 
           const newItemsSinceCursor = db.posts.filter(
-            (post) =>
-              post.channelId === opts.input.channelId &&
-              (!lastMessageCursor || post.createdAt > lastMessageCursor),
+            (post) => !lastMessageCursor || post.createdAt > lastMessageCursor,
           );
 
           for (const item of newItemsSinceCursor) {

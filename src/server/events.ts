@@ -1,12 +1,8 @@
 import { EventEmitter, on } from "node:events";
-import type { TRPCRouterRecord } from "@trpc/server";
 import type { PostType } from "~/server/db/schema";
-import { publicProcedure } from "~/server/trpc";
-import { z } from "zod";
-import { db } from "../db/client";
 
 interface MyEvents {
-  add: (channelId: string, data: PostType) => void;
+  add: (data: PostType) => void;
 }
 declare interface MyEventEmitter {
   on<TEv extends keyof MyEvents>(event: TEv, listener: MyEvents[TEv]): this;
@@ -29,17 +25,3 @@ class MyEventEmitter extends EventEmitter {
 
 // In a real app, you'd probably use Redis or something
 export const ee = new MyEventEmitter();
-
-export const channelRouter = {
-  list: publicProcedure.query(() => {
-    return db.channels;
-  }),
-
-  create: publicProcedure
-    .input(z.object({ name: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const channel = db.insertChannel(input.name);
-
-      return channel.id;
-    }),
-} satisfies TRPCRouterRecord;

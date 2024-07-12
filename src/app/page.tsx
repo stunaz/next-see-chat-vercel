@@ -1,13 +1,6 @@
-import { HashtagIcon } from "@heroicons/react/24/outline";
-import { buttonVariants } from "~/components/button";
-import { caller } from "~/server/routers/_app";
 import Link from "next/link";
-import { Suspense } from "react";
-import { CreateChannelDialog } from "./channels/create-channel";
 
 export default async function Home() {
-  const channels = await caller.channel.list();
-
   return (
     <div className="flex-1 overflow-y-hidden">
       <div className="flex h-full flex-col">
@@ -44,26 +37,12 @@ export default async function Home() {
         </article>
 
         <div className="mt-6 space-y-2 p-4">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-medium text-gray-950 dark:text-gray-50">
-              Channels
-            </h2>
-            <Suspense>
-              <CreateChannelDialog />
-            </Suspense>
-          </div>
-          <div className="flex flex-col items-start gap-2">
-            {channels.map((channel) => (
-              <Link
-                key={channel.id}
-                className={buttonVariants({ variant: "link" })}
-                href={`/channels/${channel.id}`}
-              >
-                <HashtagIcon className="size-4 mr-2" />
-                {channel.name}
-              </Link>
-            ))}
-          </div>
+          <Link
+            href="/chat"
+            className="text-gray-700 underline dark:text-gray-400"
+          >
+            Chat
+          </Link>
         </div>
       </div>
     </div>

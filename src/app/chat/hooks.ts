@@ -2,7 +2,7 @@ import { skipToken } from "@tanstack/react-query";
 import { trpc } from "~/lib/trpc";
 import * as React from "react";
 
-export function useLivePosts(channelId: string) {
+export function useLivePosts() {
   const [data] = trpc.post.list.useSuspenseQuery(undefined, {
     // No need to refetch as we have a subscription
     refetchOnReconnect: false,
@@ -45,7 +45,7 @@ export function useLivePosts(channelId: string) {
     setLastEventId(messages.at(-1)?.id ?? null);
   }
   trpc.post.onAdd.useSubscription(
-    lastEventId === false ? skipToken : { channelId, lastEventId },
+    lastEventId === false ? skipToken : { lastEventId },
     {
       onData(event) {
         addMessages([event.data]);
