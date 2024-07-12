@@ -1,17 +1,14 @@
-import { HashtagIcon } from '@heroicons/react/24/outline';
-import { CreateChannelDialog } from '~/app/channels/create-channel';
-import { Button } from '~/components/button';
-import { auth, SignedIn, SignedOut, signIn, signOut } from '~/server/auth';
-import { caller } from '~/server/routers/_app';
-import { cx } from 'class-variance-authority';
-import Link from 'next/link';
-import { Suspense } from 'react';
+import { HashtagIcon } from "@heroicons/react/24/outline";
+import { CreateChannelDialog } from "~/app/channels/create-channel";
+import { caller } from "~/server/routers/_app";
+import { cx } from "class-variance-authority";
+import Link from "next/link";
+import { Suspense } from "react";
 
 export default async function Home(
   props: Readonly<{ params: { channelId: string }; children: React.ReactNode }>,
 ) {
   const channelId = props.params.channelId;
-  const session = await auth();
   const channels = await caller.channel.list();
 
   return (
@@ -23,9 +20,7 @@ export default async function Home(
             <span className="text-sm font-medium">Channels</span>
           </div>
           <Suspense>
-            <SignedIn>
-              <CreateChannelDialog />
-            </SignedIn>
+            <CreateChannelDialog />
           </Suspense>
         </div>
         <div className="flex flex-1 flex-col gap-2">
@@ -33,9 +28,9 @@ export default async function Home(
             <Link
               key={channel.id}
               className={cx(
-                'flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50',
+                "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-50",
                 channel.id === channelId &&
-                  'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50',
+                  "bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-50",
               )}
               href={`/channels/${channel.id}`}
             >
@@ -46,34 +41,7 @@ export default async function Home(
           <div className="mt-auto">
             <div className="flex items-center justify-between">
               <Suspense>
-                <SignedIn>
-                  <span className="text-sm font-medium">
-                    Hello, {session?.user?.name} 👋
-                  </span>
-                  <form
-                    action={async () => {
-                      'use server';
-                      await signOut();
-                    }}
-                  >
-                    <Button type="submit" size="sm">
-                      Sign Out
-                    </Button>
-                  </form>
-                </SignedIn>
-                <SignedOut>
-                  <form
-                    className="w-full"
-                    action={async () => {
-                      'use server';
-                      await signIn();
-                    }}
-                  >
-                    <Button type="submit" size="sm" className="w-full">
-                      Sign In
-                    </Button>
-                  </form>
-                </SignedOut>
+                <span className="text-sm font-medium">Hello, stunaz 👋</span>
               </Suspense>
             </div>
           </div>

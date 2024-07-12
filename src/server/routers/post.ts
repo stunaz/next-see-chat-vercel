@@ -1,79 +1,31 @@
-import { sse } from '@trpc/server';
-import { streamToAsyncIterable } from '~/lib/stream-to-async-iterator';
-import { db } from '~/server/db/client';
-import { Post, type PostType } from '~/server/db/schema';
-import { z } from 'zod';
-import { authedProcedure, publicProcedure, router } from '../trpc';
-import { currentlyTyping, ee } from './channel';
+import { sse } from "@trpc/server";
+import { streamToAsyncIterable } from "~/lib/stream-to-async-iterator";
+import type { PostType } from "~/server/db/schema";
+import { z } from "zod";
+import { db } from "../db/client";
+import { publicProcedure, router } from "../trpc";
+import { ee } from "./channel";
 
 export const postRouter = router({
-  add: authedProcedure
+  list: publicProcedure.query(() => {
+    return db.posts;
+  }),
+  add: publicProcedure
     .input(
       z.object({
-        id: z.string().uuid().optional(),
         channelId: z.string().uuid(),
+        author: z.string().trim().min(1),
         text: z.string().trim().min(1),
       }),
     )
     .mutation(async (opts) => {
       const { channelId } = opts.input;
 
-      const [post] = await db
-        .insert(Post)
-        .values({
-          id: opts.input.id,
-          text: opts.input.text,
-          author: opts.ctx.user.name,
-          channelId,
-        })
-        .returning();
+      const post = db.insertPost(opts.input.author, channelId, opts.input.text);
 
-      const channelTyping = currentlyTyping[channelId];
-      if (channelTyping) {
-        delete channelTyping[opts.ctx.user.name];
-        ee.emit('isTypingUpdate', channelId, channelTyping);
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-      const defPost = post!;
-      ee.emit('add', channelId, defPost);
+      ee.emit("add", channelId, post);
 
       return post;
-    }),
-
-  infinite: publicProcedure
-    .input(
-      z.object({
-        channelId: z.string().uuid(),
-        cursor: z.date().nullish(),
-        take: z.number().min(1).max(50).nullish(),
-      }),
-    )
-    .query(async (opts) => {
-      const take = opts.input.take ?? 20;
-      const cursor = opts.input.cursor;
-
-      const page = await db.query.Post.findMany({
-        orderBy: (fields, ops) => ops.desc(fields.createdAt),
-        where: (fields, ops) =>
-          ops.and(
-            ops.eq(fields.channelId, opts.input.channelId),
-            cursor ? ops.lte(fields.createdAt, cursor) : undefined,
-          ),
-        limit: take + 1,
-      });
-
-      const items = page.reverse();
-      let nextCursor: typeof cursor | null = null;
-      if (items.length > take) {
-        const prev = items.shift();
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        nextCursor = prev!.createdAt;
-      }
-      return {
-        items,
-        nextCursor,
-      };
     }),
 
   onAdd: publicProcedure
@@ -91,9 +43,7 @@ export const postRouter = router({
 
       const eventId = opts.input.lastEventId;
       if (eventId) {
-        const itemById = await db.query.Post.findFirst({
-          where: (fields, ops) => ops.eq(fields.id, eventId),
-        });
+        const itemById = db.posts.filter((post) => post.id === eventId)[0];
         lastMessageCursor = itemById?.createdAt ?? null;
       }
 
@@ -109,21 +59,16 @@ export const postRouter = router({
               controller.enqueue(data);
             }
           };
-          ee.on('add', onAdd);
+          ee.on("add", onAdd);
           unsubscribe = () => {
-            ee.off('add', onAdd);
+            ee.off("add", onAdd);
           };
 
-          const newItemsSinceCursor = await db.query.Post.findMany({
-            where: (fields, ops) =>
-              ops.and(
-                ops.eq(fields.channelId, opts.input.channelId),
-                lastMessageCursor
-                  ? ops.gt(fields.createdAt, lastMessageCursor)
-                  : undefined,
-              ),
-            orderBy: (fields, ops) => ops.asc(fields.createdAt),
-          });
+          const newItemsSinceCursor = db.posts.filter(
+            (post) =>
+              post.channelId === opts.input.channelId &&
+              (!lastMessageCursor || post.createdAt > lastMessageCursor),
+          );
 
           for (const item of newItemsSinceCursor) {
             controller.enqueue(item);

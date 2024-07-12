@@ -1,68 +1,16 @@
-import { skipToken } from '@tanstack/react-query';
-import { trpc } from '~/lib/trpc';
-import * as React from 'react';
-
-export function useWhoIsTyping(channelId: string) {
-  const [currentlyTyping, setCurrentlyTyping] = React.useState<string[]>([]);
-  trpc.channel.whoIsTyping.useSubscription(
-    { channelId },
-    {
-      onData(list) {
-        setCurrentlyTyping(list);
-      },
-    },
-  );
-
-  return currentlyTyping;
-}
-
-/**
- * Set isTyping with a throttle of 1s
- * Triggers immediately if state changes
- */
-export function useThrottledIsTypingMutation(channelId: string) {
-  const isTyping = trpc.channel.isTyping.useMutation();
-
-  return React.useMemo(() => {
-    let state = false;
-    let timeout: ReturnType<typeof setTimeout> | null;
-    function trigger() {
-      timeout && clearTimeout(timeout);
-      timeout = null;
-
-      isTyping.mutate({ typing: state, channelId });
-    }
-
-    return (nextState: boolean) => {
-      const shouldTriggerImmediately = nextState !== state;
-
-      state = nextState;
-      if (shouldTriggerImmediately) {
-        trigger();
-      } else if (!timeout) {
-        timeout = setTimeout(trigger, 1000);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channelId]);
-}
+import { skipToken } from "@tanstack/react-query";
+import { trpc } from "~/lib/trpc";
+import * as React from "react";
 
 export function useLivePosts(channelId: string) {
-  const [data, query] = trpc.post.infinite.useSuspenseInfiniteQuery(
-    { channelId },
-    {
-      getNextPageParam: (d) => d.nextCursor,
-      // No need to refetch as we have a subscription
-      refetchOnReconnect: false,
-      refetchOnWindowFocus: false,
-      refetchOnMount: false,
-    },
-  );
-  const utils = trpc.useUtils();
-  const [messages, setMessages] = React.useState(() => {
-    const msgs = query.data?.pages.map((page) => page.items).flat();
-    return msgs ?? null;
+  const [data] = trpc.post.list.useSuspenseQuery(undefined, {
+    // No need to refetch as we have a subscription
+    refetchOnReconnect: false,
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
   });
+  const utils = trpc.useUtils();
+  const [messages, setMessages] = React.useState(data);
   type Post = NonNullable<typeof messages>[number];
 
   /**
@@ -70,7 +18,7 @@ export function useLivePosts(channelId: string) {
    */
   const addMessages = React.useCallback((incoming?: Post[]) => {
     setMessages((current) => {
-      const map: Record<Post['id'], Post> = {};
+      const map: Record<Post["id"], Post> = {};
       for (const msg of current ?? []) {
         map[msg.id] = msg;
       }
@@ -82,14 +30,6 @@ export function useLivePosts(channelId: string) {
       );
     });
   }, []);
-
-  /**
-   * when new data from `useInfiniteQuery`, merge with current state
-   */
-  React.useEffect(() => {
-    const msgs = query.data?.pages.map((page) => page.items).flat();
-    addMessages(msgs);
-  }, [query.data?.pages, addMessages]);
 
   const [lastEventId, setLastEventId] = React.useState<
     // Query has not been run yet
@@ -111,13 +51,13 @@ export function useLivePosts(channelId: string) {
         addMessages([event.data]);
       },
       onError(err) {
-        console.error('Subscription error:', err);
-        utils.post.infinite.invalidate();
+        console.error("Subscription error:", err);
+        utils.post.list.invalidate();
       },
     },
   );
   return {
-    query,
+    data,
     messages,
   };
 }

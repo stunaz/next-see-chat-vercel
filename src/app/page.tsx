@@ -1,10 +1,9 @@
-import { HashtagIcon } from '@heroicons/react/24/outline';
-import { buttonVariants } from '~/components/button';
-import { SignedIn, SignedOut } from '~/server/auth';
-import { caller } from '~/server/routers/_app';
-import Link from 'next/link';
-import { Suspense } from 'react';
-import { CreateChannelDialog } from './channels/create-channel';
+import { HashtagIcon } from "@heroicons/react/24/outline";
+import { buttonVariants } from "~/components/button";
+import { caller } from "~/server/routers/_app";
+import Link from "next/link";
+import { Suspense } from "react";
+import { CreateChannelDialog } from "./channels/create-channel";
 
 export default async function Home() {
   const channels = await caller.channel.list();
@@ -50,19 +49,14 @@ export default async function Home() {
               Channels
             </h2>
             <Suspense>
-              <SignedIn>
-                <CreateChannelDialog />
-              </SignedIn>
-              <SignedOut>
-                <a href="/api/auth/signin">Login</a>
-              </SignedOut>
+              <CreateChannelDialog />
             </Suspense>
           </div>
           <div className="flex flex-col items-start gap-2">
             {channels.map((channel) => (
               <Link
                 key={channel.id}
-                className={buttonVariants({ variant: 'link' })}
+                className={buttonVariants({ variant: "link" })}
                 href={`/channels/${channel.id}`}
               >
                 <HashtagIcon className="size-4 mr-2" />

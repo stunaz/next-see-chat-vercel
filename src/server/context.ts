@@ -1,18 +1,13 @@
-import type { FetchCreateContextFnOptions } from '@trpc/server/adapters/fetch';
-import { auth } from './auth';
+import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 
 /**
  * Creates context for an incoming request
  * @link https://trpc.io/docs/v11/context
  */
 export const createContext = async (opts: FetchCreateContextFnOptions) => {
-  const session = await auth();
+  await new Promise((resolve) => setTimeout(resolve, 1000));
 
-  console.log('createContext for', session?.user?.name ?? 'unknown user');
-
-  return {
-    session,
-  };
+  return {};
 };
 
 export type Context = Awaited<ReturnType<typeof createContext>>;

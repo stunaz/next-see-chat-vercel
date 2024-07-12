@@ -1,17 +1,16 @@
 /**
  * This file contains the root router of your tRPC-backend
  */
-import { observable } from '@trpc/server/observable';
-import { createCallerFactory } from '@trpc/server/unstable-core-do-not-import';
-import { cache } from 'react';
-import { auth } from '../auth';
-import type { Context } from '../context';
-import { publicProcedure, router } from '../trpc';
-import { channelRouter } from './channel';
-import { postRouter } from './post';
+import { observable } from "@trpc/server/observable";
+import { createCallerFactory } from "@trpc/server/unstable-core-do-not-import";
+import { cache } from "react";
+import type { Context } from "../context";
+import { publicProcedure, router } from "../trpc";
+import { channelRouter } from "./channel";
+import { postRouter } from "./post";
 
 export const appRouter = router({
-  healthcheck: publicProcedure.query(() => 'yay!'),
+  healthcheck: publicProcedure.query(() => "yay!"),
 
   channel: channelRouter,
   post: postRouter,
@@ -30,10 +29,6 @@ export const appRouter = router({
 
 export type AppRouter = typeof appRouter;
 
-const createCallerContext = cache(
-  async (): Promise<Context> => ({
-    session: await auth(),
-  }),
-);
+const createCallerContext = cache(async (): Promise<Context> => ({}));
 
 export const caller = createCallerFactory()(appRouter)(createCallerContext);

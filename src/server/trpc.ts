@@ -8,9 +8,9 @@
  * @link https://trpc.io/docs/v11/procedures
  */
 
-import { initTRPC, TRPCError } from '@trpc/server';
-import superjson from 'superjson';
-import type { Context } from './context';
+import { initTRPC, TRPCError } from "@trpc/server";
+import superjson from "superjson";
+import type { Context } from "./context";
 
 const t = initTRPC.context<Context>().create({
   /**
@@ -43,23 +43,3 @@ export const publicProcedure = t.procedure;
  * @link https://trpc.io/docs/v11/merging-routers
  */
 export const mergeRouters = t.mergeRouters;
-
-/**
- * Protected base procedure
- */
-export const authedProcedure = t.procedure.use(function isAuthed(opts) {
-  const user = opts.ctx.session?.user;
-
-  if (!user?.name) {
-    throw new TRPCError({ code: 'UNAUTHORIZED' });
-  }
-
-  return opts.next({
-    ctx: {
-      user: {
-        ...user,
-        name: user.name,
-      },
-    },
-  });
-});
